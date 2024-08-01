@@ -219,8 +219,9 @@ class DataViewer(QWidget):
         file_path, _ = QFileDialog.getOpenFileName(self, "Open PDF", "", "PDF Files (*.pdf)")
         if file_path:
             try:
-                data = tempCheck.extract_csv_from_pdf(file_path)
-                print(data)
+                csv_string  = tempCheck.extract_csv_from_pdf(file_path)
+                csv_stringio = io.StringIO(csv_string)
+                new_data = pd.read_csv(csv_stringio)
                 new_data = pd.read_csv(file_path)
                 print(type(new_data))
                 if self.profile["data"] is None:

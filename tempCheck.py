@@ -43,6 +43,6 @@ def extract_csv_from_pdf(file_path):
     csv = chat_completion.choices[0].message.content.replace('"', '').replace("'", '').replace("_", " ")
     return csv
 
-file_path = 'elonMusk.pdf'
-csv = extract_csv_from_pdf(file_path)
-print(csv)
+# file_path = 'elonMusk.pdf'
+# csv = extract_csv_from_pdf(file_path)
+# print(csv)

@@ -14,6 +14,11 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(parent_dir)
+import tempCheck
+
 class ProfileCard(QFrame):
     clicked = pyqtSignal(str)
     
@@ -211,9 +216,11 @@ class DataViewer(QWidget):
             json.dump(profile_copy, f)
 
     def load_csv(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Open CSV", "", "CSV Files (*.csv)")
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open PDF", "", "PDF Files (*.pdf)")
         if file_path:
             try:
+                data = tempCheck.extract_csv_from_pdf(file_path)
+                print(data)
                 new_data = pd.read_csv(file_path)
                 print(type(new_data))
                 if self.profile["data"] is None:

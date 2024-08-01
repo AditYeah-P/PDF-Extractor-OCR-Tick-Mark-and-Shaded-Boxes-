@@ -51,4 +51,4 @@ chat_completion = client.chat.completions.create(
 
 csv = chat_completion.choices[0].message.content.replace('"', '').replace("'", '').replace("_", " ")
 #print(chat_completion.choices[0].message.content)
-print(csv)
+#print(csv)

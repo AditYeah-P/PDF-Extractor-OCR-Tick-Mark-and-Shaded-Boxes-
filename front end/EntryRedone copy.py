@@ -51,7 +51,7 @@ class ProfileSelector(ctk.CTk):
 
     def initUI(self):
         self.title("Profile Selector")
-        self.geometry("800x600")
+        self.geometry("800x650")
         self.configure(bg_color="#4ECDC4")
         
         self.columnconfigure(0, weight=1)
@@ -300,5 +300,6 @@ class ChartWindow(ctk.CTkToplevel):
 
 
 if __name__ == "__main__":
+    ctk.set_appearance_mode("dark")
     app = ProfileSelector()
     app.mainloop()

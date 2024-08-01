@@ -111,7 +111,10 @@ class ProfileSelector(ctk.CTk):
         for profile in self.profiles:
             if profile["name"] == name:
                 if profile["data"] is not None:
-                    profile["data"].download()
+                    file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")])
+                    if file_path:
+                        profile["data"].to_csv(file_path, index=False)
+                        messagebox.showinfo("Success", f"Data for {name} has been downloaded successfully!")
                 else:
                     messagebox.showinfo("Info", "No data available for download.")
                 break
@@ -171,6 +174,15 @@ class DataViewer(ctk.CTkToplevel):
             self.show_current()
             self.create_radio_buttons()
 
+    def download(self):
+        if self.profile["data"] is not None:
+            file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")])
+            if file_path:
+                self.profile["data"].to_csv(file_path, index=False)
+                messagebox.showinfo("Success", f"Data for {self.profile_name} has been downloaded successfully!")
+        else:
+            messagebox.showinfo("Info", "No data available for download.")
+
     def on_frame_configure(self, event):
         self.radio_buttons_canvas.configure(scrollregion=self.radio_buttons_canvas.bbox("all"))
 
@@ -222,7 +234,6 @@ class DataViewer(ctk.CTkToplevel):
             try:
                 csv_string = tempCheck.extract_csv_from_pdf(file_path)
                 csv_stringio = io.StringIO(csv_string)
-            # Try reading with utf-8, and if it fails, catch the exception and try a different encoding
                 try:
                     new_data = pd.read_csv(csv_stringio, encoding='utf-8')
                 except UnicodeDecodeError:
@@ -241,27 +252,6 @@ class DataViewer(ctk.CTkToplevel):
                 self.save_profile()
             except Exception as e:
                 messagebox.showerror("Error", str(e))
-    # def load_csv(self):
-    #     file_path = filedialog.askopenfilename(filetypes=[("PDF Files", "*.pdf")])
-    #     if file_path:
-    #         try:
-    #             csv_string  = tempCheck.extract_csv_from_pdf(file_path)
-    #             csv_stringio = io.StringIO(csv_string)
-    #             new_data = pd.read_csv(csv_stringio)
-    #             new_data = pd.read_csv(file_path)
-    #             if self.profile["data"] is None:
-    #                 self.profile["data"] = new_data
-    #             else:
-    #                 if list(new_data.columns) == list(self.profile["data"].columns):
-    #                     self.profile["data"] = pd.concat([self.profile["data"], new_data], ignore_index=True)
-    #                 else:
-    #                     raise ValueError("CSV structure does not match the existing data")
-    #             self.current_row = 0
-    #             self.show_current()
-    #             self.create_radio_buttons()
-    #             self.save_profile()
-    #         except Exception as e:
-    #             messagebox.showerror("Error", str(e))
 
     def show_current(self):
         if self.profile["data"] is not None and not self.profile["data"].empty:
@@ -299,7 +289,7 @@ class ChartWindow(ctk.CTkToplevel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.title("Bar Chart")
-        self.geometry("800x600")
+        self.geometry("800x650")
         
         layout = ctk.CTkFrame(self)
         layout.pack(fill=tk.BOTH, expand=True)

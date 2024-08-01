@@ -72,11 +72,11 @@ chat_completion = client.chat.completions.create(
     messages=[ 
         {
             "role": "system",
-            "content": "For the prompt outputs. Don't add any unnecessary messages including final note. Just display the output",
+            "content": "For the prompt outputs. Don't add any unnecessary messages including final note. Just display the output. ",
         },
         {
             "role": "user",
-            "content": f"{tess} Don't include any messages from the model such as 'Here is the extracted data.....'Clean and Extract the above output and put them in single csv file. Don't include sub-headings like: Personal Information, Professional Details, Practice Information, Claims History, Additional Risk Factors. Include the header rows and the subsequent rows continuously with a comma.",
+            "content": f"{tess} Don't include any messages from the model such as 'Here is the extracted data.....'Clean and Extract the above output and put them in single csv file. Don't include sub-headings like: Personal Information, Professional Details, Practice Information, Claims History, Additional Risk Factors. Include the header rows and the subsequent rows continuously with a comma.[] and () are used as options in multiple choice Questions, any irregularities are most likely the marked option",
         },
         {
             "role": "user",

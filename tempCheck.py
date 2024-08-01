@@ -1,7 +1,5 @@
+import google.generativeai as genai
 import os
-
-from groq import Groq
-
 import pytesseract
 from pdf2image import convert_from_path
 
@@ -16,31 +14,16 @@ def ocr_extract_text_from_pdf(file_path):
 
 def extract_csv_from_pdf(file_path):
     ocr_pdf_text = ocr_extract_text_from_pdf(file_path)
-    client = Groq(
-        api_key="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",
-    )
-    chat_completion = client.chat.completions.create(
-        messages=[ 
-            {
-                "role": "system",
-                "content": "For the prompt outputs. Don't add any unnecessary messages including final note. Just display the output",
-            },
-            {
-                "role": "user",
-                "content": f"{ocr_pdf_text} Don't include any messages from the model such as 'Here is the extracted data.....'Clean and Extract the above output and put them in single csv file. Don't include sub-headings like: Personal Information, Professional Details, Practice Information, Claims History, Additional Risk Factors. Include the header rows and the subsequent rows continuously with a comma.",
-            },
-            {
-                "role": "user",
-                "content": "Include the header rows and the subsequent rows continuously with a comma.",
-            },
-            {
-                "role": "system",
-                "content": "Please extract the relevant information from the text and format it into a single CSV file.",
-            }
-        ],
-        model="llama3-8b-8192",
-    )
-    csv = chat_completion.choices[0].message.content.replace('"', '').replace("'", '').replace("_", " ")
+    
+    genai.configure(api_key='AIzaSyBGZNshO8QDWjX9K9FIqxnIhuEvW_OjZK8')
+
+    model = genai.GenerativeModel('gemini-1.5-flash')
+
+    response = model.generate_content(f"Analyse the text given and return ONLY a csv. All Multiple choice columns must have the RADIO_ prefix.\n\n{ocr_pdf_text} Clean and Extract the above output and put them in a single CSV file. Include the header rows and the subsequent rows continuously with a comma.")
+    
+    csv = response.text
+    
+    print(csv)
     return csv
 
 # file_path = 'elonMusk.pdf'

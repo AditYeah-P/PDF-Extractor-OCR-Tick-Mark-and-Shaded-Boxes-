@@ -1,6 +1,7 @@
 import sys
 import csv
 import os
+import io
 import json
 import pandas as pd
 from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
@@ -234,7 +235,7 @@ class DataViewer(QWidget):
                 self.current_row = 0
                 self.show_current()
                 self.create_radio_buttons()
-                self.save_profile()  # Save the profile after adding new data
+                self.save_profile()
             except Exception as e:
                 QMessageBox.critical(self, "Error", str(e))
 

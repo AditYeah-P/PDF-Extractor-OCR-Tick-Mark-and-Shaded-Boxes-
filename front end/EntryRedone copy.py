@@ -110,7 +110,7 @@ class ProfileSelector(ctk.CTk):
     def download_data(self, name):
         for profile in self.profiles:
             if profile["name"] == name:
-                if profile["data"] is not None:
+                if profile.get("data") is not None:
                     file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")])
                     if file_path:
                         profile["data"].to_csv(file_path, index=False)
@@ -122,8 +122,7 @@ class ProfileSelector(ctk.CTk):
 class DataViewer(ctk.CTkToplevel):
     def __init__(self, profile):
         super().__init__()
-        self.profile_name = profile["name"]
-        self.profile = self.load_profile()
+        self.profile = profile
         self.current_row = 0
         self.chart_window = None
         self.initUI()
@@ -138,7 +137,7 @@ class DataViewer(ctk.CTkToplevel):
         
         self.input_field = ctk.CTkEntry(input_frame, width=500)
         self.input_field.pack(side=tk.LEFT, padx=10)
-        load_button = ctk.CTkButton(input_frame, text="Load CSV", command=self.load_csv)
+        load_button = ctk.CTkButton(input_frame, text="Load PDF", command=self.load_csv)
         load_button.pack(side=tk.LEFT)
         
         self.text_area = ctk.CTkTextbox(self, width=780, height=300)
@@ -174,60 +173,57 @@ class DataViewer(ctk.CTkToplevel):
             self.show_current()
             self.create_radio_buttons()
 
-    def download(self):
-        if self.profile["data"] is not None:
-            file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")])
-            if file_path:
-                self.profile["data"].to_csv(file_path, index=False)
-                messagebox.showinfo("Success", f"Data for {self.profile_name} has been downloaded successfully!")
-        else:
-            messagebox.showinfo("Info", "No data available for download.")
-
     def on_frame_configure(self, event):
         self.radio_buttons_canvas.configure(scrollregion=self.radio_buttons_canvas.bbox("all"))
 
     def create_radio_buttons(self):
-        # Clear existing widgets
         for widget in self.radio_buttons_frame_interior.winfo_children():
             widget.destroy()
-            
-        # Define the radio columns
-        radio_columns = [col for col in self.profile["data"].columns if col.startswith("RADIO_")]
-        
-        # Create and place buttons in a grid
-        for i, col in enumerate(radio_columns):
-            button = ctk.CTkButton(self.radio_buttons_frame_interior, text=col, 
-                                command=lambda c=col: self.show_bar_chart(c),
+
+        def add_radio_button(column):
+            button = ctk.CTkButton(self.radio_buttons_frame_interior, text=column, 
+                                command=lambda c=column: self.show_bar_chart(c),
                                 fg_color="#3da69e", hover_color="#2f8f84", 
                                 text_color="white", font=("Arial", 12, "bold"))
-            button.grid(row=0, column=i, pady=10, padx=10, sticky="ew")
-        
-        # Configure grid weights to ensure proper resizing
-        for i in range(len(radio_columns)):
-            self.radio_buttons_frame_interior.grid_columnconfigure(i, weight=1)
-        self.radio_buttons_frame_interior.grid_rowconfigure(0, weight=1)
-        
-        # Adjust the canvas scroll region to include all buttons
-        self.radio_buttons_frame_interior.update_idletasks()
-        self.radio_buttons_canvas.config(scrollregion=self.radio_buttons_canvas.bbox("all"))    
-        
-    def load_profile(self):
-        profile_path = f"{self.profile_name}.json"
-        if os.path.exists(profile_path):
-            with open(profile_path, 'r') as f:
-                profile = json.load(f)
-                if profile['data']:
-                    profile['data'] = pd.read_json(StringIO(profile['data']))
-                return profile
-        else:
-            return {"name": self.profile_name, "data": None}
+            button.pack(side=tk.TOP, padx=5, pady=5, fill=tk.X, expand=True)
+            self.radio_buttons_frame_interior.update_idletasks()
+            self.radio_buttons_canvas.config(scrollregion=self.radio_buttons_canvas.bbox("all"))
+
+        def on_add_button_click():
+            column_name = entry.get()
+            if column_name in self.profile["data"].columns:
+                add_radio_button(column_name)
+            else:
+                messagebox.showerror("Error", f"Column '{column_name}' not found in data.")
+
+        entry_frame = ctk.CTkFrame(self.radio_buttons_frame_interior)
+        entry_frame.pack(fill=tk.X, padx=10, pady=5)
     
-    def save_profile(self):
-        profile_copy = self.profile.copy()
-        if isinstance(profile_copy['data'], pd.DataFrame):
-            profile_copy['data'] = profile_copy['data'].to_json()
-        with open(f"{self.profile_name}.json", 'w') as f:
-            json.dump(profile_copy, f)
+        entry = ctk.CTkEntry(entry_frame, width=200)
+        entry.pack(side=tk.LEFT, padx=5)
+    
+        add_button = ctk.CTkButton(entry_frame, text="Add Field", command=on_add_button_click)
+        add_button.pack(side=tk.LEFT, padx=5)
+
+        self.radio_buttons_canvas.config(scrollregion=self.radio_buttons_canvas.bbox("all"))
+        self.radio_buttons_canvas.configure(xscrollcommand=self.radio_buttons_horizontal_scrollbar.set, yscrollcommand=self.radio_buttons_scrollbar.set)
+
+        self.radio_buttons_scrollbar = tk.Scrollbar(self.radio_buttons_frame, orient="vertical", command=self.radio_buttons_canvas.yview)
+        self.radio_buttons_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.radio_buttons_horizontal_scrollbar = tk.Scrollbar(self.radio_buttons_frame, orient="horizontal", command=self.radio_buttons_canvas.xview)
+        self.radio_buttons_horizontal_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+
+        self.radio_buttons_frame_interior.bind("<Configure>", self.on_frame_configure)
+
+    def on_frame_configure(self, event):
+        self.radio_buttons_canvas.configure(scrollregion=self.radio_buttons_canvas.bbox("all"))
+
+
+
+    # Clear
+
+   
     def load_csv(self):
         file_path = filedialog.askopenfilename(filetypes=[("PDF Files", "*.pdf")])
         if file_path:
@@ -249,7 +245,6 @@ class DataViewer(ctk.CTkToplevel):
                 self.current_row = 0
                 self.show_current()
                 self.create_radio_buttons()
-                self.save_profile()
             except Exception as e:
                 messagebox.showerror("Error", str(e))
 
@@ -320,7 +315,6 @@ class ChartWindow(ctk.CTkToplevel):
         if file_path:
             self.figure.savefig(file_path)
             messagebox.showinfo("Success", "Image saved successfully!")
-
 
 if __name__ == "__main__":
     ctk.set_appearance_mode("light")

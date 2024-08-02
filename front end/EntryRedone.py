@@ -7,23 +7,47 @@ from tkinter import filedialog, messagebox
 import customtkinter as ctk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from matplotlib import pyplot as plt
+from io import StringIO
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(parent_dir)
+import tempCheck
+import os
+import io
 
 class ProfileCard(ctk.CTkFrame):
-    def __init__(self, parent, name, command):
+    def __init__(self, parent, name, command, edit_command, download_command):
         super().__init__(parent)
         self.name = name
         self.command = command
+        self.edit_command = edit_command
+        self.download_command = download_command
         self.initUI()
         
     def initUI(self):
-        self.name_label = ctk.CTkLabel(self, text=self.name)
-        self.name_label.pack(pady=10)
+        self.columnconfigure(0, weight=1)
+        self.name_label = ctk.CTkLabel(self, text=self.name, anchor="w")
+        self.name_label.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+        
+        edit_button = ctk.CTkButton(self, text="Edit", width=60, command=self.edit_name)
+        edit_button.grid(row=0, column=1, padx=(0, 5))
+        
+        download_button = ctk.CTkButton(self, text="Download", width=80, command=self.download_data)
+        download_button.grid(row=0, column=2, padx=(0, 10))
+        
         self.bind("<Button-1>", self.on_click)
         self.name_label.bind("<Button-1>", self.on_click)
         self.configure(fg_color="#45b7ae", corner_radius=10)
 
     def on_click(self, event):
         self.command(self.name)
+
+    def edit_name(self):
+        self.edit_command(self)
+
+    def download_data(self):
+        self.download_command(self.name)
 
 class ProfileSelector(ctk.CTk):
     def __init__(self):
@@ -33,69 +57,72 @@ class ProfileSelector(ctk.CTk):
 
     def initUI(self):
         self.title("Profile Selector")
-        self.geometry("800x600")
+        self.geometry("800x650")
         self.configure(bg_color="#4ECDC4")
         
+        self.columnconfigure(0, weight=1)
+        
         self.scrollable_frame = ctk.CTkScrollableFrame(self, width=780, height=500)
-        self.scrollable_frame.pack(pady=20)
+        self.scrollable_frame.grid(row=0, column=0, pady=20, sticky="nsew")
+        self.scrollable_frame.columnconfigure(0, weight=1)
         
         add_button = ctk.CTkButton(self, text="+", width=50, height=50, 
                                    font=("Arial", 20, "bold"), command=self.add_profile)
-        add_button.pack(pady=10)
+        add_button.grid(row=1, column=0, pady=10)
 
     def add_profile(self):
-        name = ctk.CTkInputDialog(text="Enter profile name:", title="New Profile").get_input()
-        if name:
-            card = ProfileCard(self.scrollable_frame, name, self.open_profile)
-            card.pack(pady=5)
-            self.profiles.append({"name": name, "data": None})
+        name = f"New Profile {len(self.profiles) + 1}"
+        card = ProfileCard(self.scrollable_frame, name, self.open_profile, self.edit_profile_name, self.download_data)
+        card.grid(row=len(self.profiles), column=0, pady=5, sticky="ew")
+        self.profiles.append({"name": name, "data": None})
+        self.edit_profile_name(card)
 
     def open_profile(self, name):
         for profile in self.profiles:
             if profile["name"] == name:
                 self.data_viewer = DataViewer(profile)
                 self.data_viewer.mainloop()
+                self.data_viewer.focus_force()
                 break
 
-class ChartWindow(ctk.CTkToplevel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.title("Bar Chart")
-        self.geometry("800x600")
-        
-        self.figure = Figure(figsize=(8, 6))
-        self.ax = self.figure.add_subplot(111)
-        
-        self.canvas = FigureCanvasTkAgg(self.figure, self)
-        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        
-        toolbar = NavigationToolbar2Tk(self.canvas, self)
-        toolbar.update()
-        self.canvas._tkcanvas.pack(fill=tk.BOTH, expand=True)
-        
-        save_button = ctk.CTkButton(self, text="Save Image", command=self.save_image)
-        save_button.pack(pady=10)
+    def edit_profile_name(self, card):
+        def save_name():
+            new_name = entry.get()
+            if new_name:
+                old_name = card.name
+                card.name = new_name
+                card.name_label.configure(text=new_name)
+                for profile in self.profiles:
+                    if profile["name"] == old_name:
+                        profile["name"] = new_name
+                        break
+            entry.destroy()
+            save_button.destroy()
 
-    def plot_bar_chart(self, data, column):
-        self.ax.clear()
-        data.plot(kind='bar', ax=self.ax)
-        self.ax.set_title(f'Bar Chart for {column}')
-        self.ax.set_xlabel('Options')
-        self.ax.set_ylabel('Count')
-        self.canvas.draw()
+        entry = ctk.CTkEntry(card, width=200)
+        entry.insert(0, card.name)
+        entry.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+        entry.focus()
 
-    def save_image(self):
-        file_path = filedialog.asksaveasfilename(defaultextension=".png",
-                                                 filetypes=[("PNG Files", "*.png"), ("All Files", "*.*")])
-        if file_path:
-            self.figure.savefig(file_path)
-            messagebox.showinfo("Success", "Image saved successfully!")
+        save_button = ctk.CTkButton(card, text="Save", width=60, command=save_name)
+        save_button.grid(row=0, column=1, padx=(0, 5))
+
+    def download_data(self, name):
+        for profile in self.profiles:
+            if profile["name"] == name:
+                if profile.get("data") is not None:
+                    file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")])
+                    if file_path:
+                        profile["data"].to_csv(file_path, index=False)
+                        messagebox.showinfo("Success", f"Data for {name} has been downloaded successfully!")
+                else:
+                    messagebox.showinfo("Info", "No data available for download.")
+                break
 
 class DataViewer(ctk.CTkToplevel):
     def __init__(self, profile):
         super().__init__()
-        self.profile_name = profile["name"]
-        self.profile = self.load_profile()
+        self.profile = profile
         self.current_row = 0
         self.chart_window = None
         self.initUI()
@@ -110,11 +137,11 @@ class DataViewer(ctk.CTkToplevel):
         
         self.input_field = ctk.CTkEntry(input_frame, width=500)
         self.input_field.pack(side=tk.LEFT, padx=10)
-        load_button = ctk.CTkButton(input_frame, text="Load CSV", command=self.load_csv)
+        load_button = ctk.CTkButton(input_frame, text="Load PDF", command=self.load_csv)
         load_button.pack(side=tk.LEFT)
         
-        self.text_area = ctk.CTkTextbox(self, width=780, height=300, state=tk.DISABLED)
-        self.text_area.pack(pady=10)
+        self.text_area = ctk.CTkTextbox(self, width=780, height=300)
+        self.text_area.pack(pady=10, fill=tk.BOTH, expand=True)
         
         nav_frame = ctk.CTkFrame(self)
         nav_frame.pack(pady=10)
@@ -126,36 +153,29 @@ class DataViewer(ctk.CTkToplevel):
         next_button = ctk.CTkButton(nav_frame, text=">", command=self.show_next)
         next_button.pack(side=tk.LEFT, padx=5)
         
-        self.scrollable_frame = ctk.CTkScrollableFrame(self, width=780, height=50)
-        self.scrollable_frame.pack(pady=10)
+        chart_frame = ctk.CTkFrame(self)
+        chart_frame.pack(pady=10, fill=tk.X)
+        
+        self.chart_field = ctk.CTkEntry(chart_frame, width=300, placeholder_text="Enter column name")
+        self.chart_field.pack(side=tk.LEFT, padx=10)
+        
+        generate_button = ctk.CTkButton(chart_frame, text="Generate", command=self.generate_chart)
+        generate_button.pack(side=tk.LEFT)
         
         if self.profile["data"] is not None:
             self.show_current()
-            self.create_radio_buttons()
-
-    def load_profile(self):
-        profile_path = f"{self.profile_name}.json"
-        if os.path.exists(profile_path):
-            with open(profile_path, 'r') as f:
-                profile = json.load(f)
-                if profile['data']:
-                    profile['data'] = pd.read_json(profile['data'])
-                return profile
-        else:
-            return {"name": self.profile_name, "data": None}
-
-    def save_profile(self):
-        profile_copy = self.profile.copy()
-        if isinstance(profile_copy['data'], pd.DataFrame):
-            profile_copy['data'] = profile_copy['data'].to_json()
-        with open(f"{self.profile_name}.json", 'w') as f:
-            json.dump(profile_copy, f)
 
     def load_csv(self):
-        file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
+        file_path = filedialog.askopenfilename(filetypes=[("PDF Files", "*.pdf")])
         if file_path:
             try:
-                new_data = pd.read_csv(file_path)
+                csv_string = tempCheck.extract_csv_from_pdf(file_path)
+                csv_stringio = io.StringIO(csv_string)
+                try:
+                    new_data = pd.read_csv(csv_stringio, encoding='utf-8')
+                except UnicodeDecodeError:
+                    new_data = pd.read_csv(csv_stringio, encoding='ISO-8859-1')
+            
                 if self.profile["data"] is None:
                     self.profile["data"] = new_data
                 else:
@@ -165,8 +185,6 @@ class DataViewer(ctk.CTkToplevel):
                         raise ValueError("CSV structure does not match the existing data")
                 self.current_row = 0
                 self.show_current()
-                self.create_radio_buttons()
-                self.save_profile()
             except Exception as e:
                 messagebox.showerror("Error", str(e))
 
@@ -191,26 +209,57 @@ class DataViewer(ctk.CTkToplevel):
             self.current_row += 1
             self.show_current()
 
-    def create_radio_buttons(self):
-        for widget in self.scrollable_frame.winfo_children():
-            widget.destroy()
-        
-        radio_columns = [col for col in self.profile["data"].columns if col.startswith("RADIO_")]
-        for col in radio_columns:
-            button = ctk.CTkButton(self.scrollable_frame, text=col, 
-                                   command=lambda c=col: self.show_bar_chart(c))
-            button.pack(pady=5, padx=5, side=tk.LEFT)
-
-    def show_bar_chart(self, column):
-        if self.profile["data"] is not None:
+    def generate_chart(self):
+        column = self.chart_field.get()
+        if self.profile["data"] is not None and column in self.profile["data"].columns:
             data = self.profile["data"][column].value_counts()
-            
-            if self.chart_window is None:
+
+            if self.chart_window is None or not self.chart_window.winfo_exists():
                 self.chart_window = ChartWindow(self)
-            
+
             self.chart_window.plot_bar_chart(data, column)
-            self.chart_window.show()
+            self.chart_window.deiconify()
+            self.chart_window.focus_force()
+        else:
+            messagebox.showerror("Error", "Invalid column name or no data loaded")
+
+class ChartWindow(ctk.CTkToplevel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.title("Bar Chart")
+        self.geometry("800x650")
+        
+        layout = ctk.CTkFrame(self)
+        layout.pack(fill=tk.BOTH, expand=True)
+        
+        self.figure, self.ax = plt.subplots(figsize=(8, 6))
+        self.canvas = FigureCanvasTkAgg(self.figure, master=layout)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        
+        toolbar = NavigationToolbar2Tk(self.canvas, layout)
+        toolbar.update()
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        
+        save_button = ctk.CTkButton(layout, text="Save Image", command=self.save_image)
+        save_button.pack(side=tk.BOTTOM, pady=10)
+        
+    def plot_bar_chart(self, data, column):
+        self.ax.clear()
+        data.plot(kind='bar', ax=self.ax)
+        self.ax.set_title(f'Bar Chart for {column}')
+        self.ax.set_xlabel('Options')
+        self.ax.set_ylabel('Count')
+        plt.tight_layout()
+        self.canvas.draw()
+
+    def save_image(self):
+        file_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG Files", "*.png"), ("All Files", "*.*")])
+        if file_path:
+            self.figure.savefig(file_path)
+            messagebox.showinfo("Success", "Image saved successfully!")
 
 if __name__ == "__main__":
+    ctk.set_appearance_mode("light")
     app = ProfileSelector()
     app.mainloop()

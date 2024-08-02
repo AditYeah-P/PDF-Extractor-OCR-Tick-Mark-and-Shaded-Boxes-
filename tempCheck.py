@@ -10,7 +10,9 @@ def ocr_extract_text_from_pdf(file_path):
     # Perform OCR on each page
     for page in pages:
         text += pytesseract.image_to_string(page)
+    print(text)
     return text
+
 
 def extract_csv_from_pdf(file_path):
     ocr_pdf_text = ocr_extract_text_from_pdf(file_path)
@@ -19,8 +21,9 @@ def extract_csv_from_pdf(file_path):
 
     model = genai.GenerativeModel('gemini-1.5-flash')
 
-    response = model.generate_content(f"Analyse the text given and return ONLY a csv. All Multiple choice columns must have the RADIO_ prefix.\n\n{ocr_pdf_text} Clean and Extract the above output and put them in a single CSV file. Include the header rows and the subsequent rows continuously with a comma.")
-    
+    response = model.generate_content(f"Analyse the text given and return ONLY a csv. Prefix the headers of all multiple choice columns with RADIO_ but do not add this prefix to the values. Clean and Extract the above output and put them in a single CSV file. Include the header rows and the subsequent rows continuously with a comma. \n{ocr_pdf_text}")
+    #response = model.generate_content(f"Analyse the text given and return ONLY a csv. All Multiple choice columns must have the RADIO_ prefix.\n\n{ocr_pdf_text} Clean and Extract the above output and put them in a single CSV file. Include the header rows and the subsequent rows continuously with a comma.")
+
     csv = response.text
     
     print(csv)

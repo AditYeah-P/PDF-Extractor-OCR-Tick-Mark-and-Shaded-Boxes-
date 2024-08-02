@@ -10,11 +10,82 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib import pyplot as plt
 from io import StringIO
 import sys
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(parent_dir)
-import tempCheck
+from PIL import Image, ImageTk
+import time
+import PdfParser
 import os
 import io
+
+class StartingScreen(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+        self.title("JA assure")
+        self.geometry("1000x700")
+        self.configure(bg_color="#1E1E1E")  # Dark background
+        self.alpha = 0.0
+        self.attributes('-alpha', self.alpha)
+        self.initUI()
+        self.fade_in()
+
+    def initUI(self):
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+        main_frame = ctk.CTkFrame(self, fg_color="#1E1E1E", corner_radius=20)
+        main_frame.grid(row=0, column=0, sticky="nsew", padx=50, pady=50)
+        main_frame.columnconfigure(0, weight=1)
+        main_frame.rowconfigure(1, weight=1)
+
+        # Logo
+        try:
+            logo_image = ctk.CTkImage(Image.open('JAassureLOGO.png'), size=(257, 92))
+            logo_label = ctk.CTkLabel(main_frame, image=logo_image, text="")
+            logo_label.grid(row=0, column=0, pady=(50, 20))
+        except Exception as e:
+            print(f"Error loading logo: {e}")
+            logo_placeholder = ctk.CTkLabel(main_frame, text="JA", font=("Arial", 72, "bold"), text_color="#4ECDC4")
+            logo_placeholder.grid(row=0, column=0, pady=(50, 20))
+
+        # JA assure text
+        ja_assure_label = ctk.CTkLabel(main_frame, text="JA assure PDF Extractor", font=("Arial", 64, "bold"), text_color="#FFFFFF")
+        ja_assure_label.grid(row=1, column=0, pady=20)
+
+        # Subtitle
+        subtitle_label = ctk.CTkLabel(main_frame, text="Empowering Your Data Journey", font=("Arial", 24), text_color="#4ECDC4")
+        subtitle_label.grid(row=2, column=0, pady=(0, 40))
+
+        # Start button
+        start_button = ctk.CTkButton(
+            main_frame, 
+            text="Get Started", 
+            command=self.start_app, 
+            width=250, 
+            height=60, 
+            font=("Arial", 24),
+            fg_color="#4ECDC4",
+            hover_color="#45b7ae",
+            corner_radius=30
+        )
+        start_button.grid(row=3, column=0, pady=40)
+
+    def fade_in(self):
+        if self.alpha < 1.0:
+            self.alpha += 0.1
+            self.attributes('-alpha', self.alpha)
+            self.after(20, self.fade_in)
+
+    def start_app(self):
+        self.fade_out()
+
+    def fade_out(self):
+        if self.alpha > 0.0:
+            self.alpha -= 0.1
+            self.attributes('-alpha', self.alpha)
+            self.after(20, self.fade_out)
+        else:
+            self.destroy()
+            app = ProfileSelector()
+            app.mainloop()
 
 class ProfileCard(ctk.CTkFrame):
     def __init__(self, parent, name, command, edit_command, download_command):
@@ -140,8 +211,16 @@ class DataViewer(ctk.CTkToplevel):
         load_button = ctk.CTkButton(input_frame, text="Load PDF", command=self.load_csv)
         load_button.pack(side=tk.LEFT)
         
-        self.text_area = ctk.CTkTextbox(self, width=780, height=300)
-        self.text_area.pack(pady=10, fill=tk.BOTH, expand=True)
+        # Create a frame to hold the two columns
+        self.text_frame = ctk.CTkFrame(self)
+        self.text_frame.pack(pady=10, fill=tk.BOTH, expand=True)
+        
+        # Create two text areas for headers and values
+        self.header_area = ctk.CTkTextbox(self.text_frame, width=380, height=300)
+        self.header_area.pack(side=tk.LEFT, padx=(0, 5), fill=tk.BOTH, expand=True)
+        
+        self.value_area = ctk.CTkTextbox(self.text_frame, width=380, height=300)
+        self.value_area.pack(side=tk.RIGHT, padx=(5, 0), fill=tk.BOTH, expand=True)
         
         nav_frame = ctk.CTkFrame(self)
         nav_frame.pack(pady=10)
@@ -169,7 +248,7 @@ class DataViewer(ctk.CTkToplevel):
         file_path = filedialog.askopenfilename(filetypes=[("PDF Files", "*.pdf")])
         if file_path:
             try:
-                csv_string = tempCheck.extract_csv_from_pdf(file_path)
+                csv_string = PdfParser.extract_csv_from_pdf(file_path)
                 csv_stringio = io.StringIO(csv_string)
                 try:
                     new_data = pd.read_csv(csv_stringio, encoding='utf-8')
@@ -191,11 +270,22 @@ class DataViewer(ctk.CTkToplevel):
     def show_current(self):
         if self.profile["data"] is not None and not self.profile["data"].empty:
             row_data = self.profile["data"].iloc[self.current_row]
-            formatted_data = "\n".join([f"{col}: {row_data[col]}" for col in row_data.index])
-            self.text_area.configure(state=tk.NORMAL)
-            self.text_area.delete("1.0", tk.END)
-            self.text_area.insert(tk.END, formatted_data)
-            self.text_area.configure(state=tk.DISABLED)
+            
+            # Clear both text areas
+            self.header_area.configure(state=tk.NORMAL)
+            self.header_area.delete("1.0", tk.END)
+            self.value_area.configure(state=tk.NORMAL)
+            self.value_area.delete("1.0", tk.END)
+            
+            # Insert headers and values
+            for col in row_data.index:
+                self.header_area.insert(tk.END, f"{col}\n")
+                self.value_area.insert(tk.END, f"{row_data[col]}\n")
+            
+            # Disable editing for both areas
+            self.header_area.configure(state=tk.DISABLED)
+            self.value_area.configure(state=tk.DISABLED)
+            
             total_rows = len(self.profile["data"])
             self.row_label.configure(text=f"Row: {self.current_row + 1} / {total_rows}")
 
@@ -261,5 +351,5 @@ class ChartWindow(ctk.CTkToplevel):
 
 if __name__ == "__main__":
     ctk.set_appearance_mode("light")
-    app = ProfileSelector()
-    app.mainloop()
+    start_screen = StartingScreen()
+    start_screen.mainloop()

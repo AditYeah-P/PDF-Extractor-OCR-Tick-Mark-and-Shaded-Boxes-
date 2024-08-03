@@ -38,7 +38,7 @@ class StartingScreen(ctk.CTk):
 
         # Logo
         try:
-            logo_image = ctk.CTkImage(Image.open('JAassureLOGO.png'), size=(257, 92))
+            logo_image = ctk.CTkImage(Image.open('project/JAassureLOGO.png'), size=(257, 92))
             logo_label = ctk.CTkLabel(main_frame, image=logo_image, text="")
             logo_label.grid(row=0, column=0, pady=(50, 20))
         except Exception as e:

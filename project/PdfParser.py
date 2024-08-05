@@ -17,7 +17,7 @@ def ocr_extract_text_from_pdf(file_path):
 def extract_csv_from_pdf(file_path):
     ocr_pdf_text = ocr_extract_text_from_pdf(file_path)
     
-    genai.configure(api_key='AIzaSyBGZNshO8QDWjX9K9FIqxnIhuEvW_OjZK8')
+    genai.configure(api_key='APIKEY')
 
     model = genai.GenerativeModel('gemini-1.5-flash')
 
